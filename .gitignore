@@ -3,3 +3,10 @@ build*/
 CMakeLists.txt.user
 
 __pycache__
+
+astroObjectsStatistics.csv
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tiff
