@@ -51,7 +51,6 @@ class ChatClient:
         self.loop.create_task(self.connectToServer())
         self.master.after(100, self.runAsyncioTasks)
 
-        # Added to manage updates
         self.isUpdatingMessages = False
 
     async def connectToServer(self):
@@ -112,6 +111,7 @@ class ChatClient:
         selectedRoom = self.roomList.get(tk.ACTIVE)
         if selectedRoom:
             self.currentRoom = selectedRoom
+            self.roomLabel.config(text=f"Текущая комната: {self.currentRoom}")
             self.messageBox.config(state=tk.NORMAL)
             self.messageBox.delete(1.0, tk.END)
             self.messageBox.config(state=tk.DISABLED)
@@ -119,8 +119,8 @@ class ChatClient:
 
     async def updateMessages(self):
         if self.isUpdatingMessages:
-            return  # Prevent concurrent updates
-        self.isUpdatingMessages = True  # Set flag to indicate update in progress
+            return
+        self.isUpdatingMessages = True
 
         try:
             if self.currentRoom:
@@ -141,9 +141,8 @@ class ChatClient:
                     self.messageBox.see(tk.END)
 
         finally:
-            self.isUpdatingMessages = False  # Reset flag after update is complete
+            self.isUpdatingMessages = False
 
-        # Schedule the next update
         self.master.after(100, lambda: self.loop.create_task(self.updateMessages()))
 
     def sendMessage(self, event=None):
