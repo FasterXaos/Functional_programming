@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import simpledialog
 import pickle
 
-
 class ChatClient:
     def __init__(self, master):
         self.master = master
@@ -12,7 +11,7 @@ class ChatClient:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(("localhost", 5555))
         
-        self.username = simpledialog.askstring("Имя пользователя", "Введите ваше имя:")
+        self.username = simpledialog.askstring("Username", "Enter your name:")
         
         self.mainFrame = tk.Frame(self.master)
         self.mainFrame.pack(fill=tk.BOTH, expand=True)
@@ -36,23 +35,27 @@ class ChatClient:
         self.inputMessage.pack(fill=tk.X)
         self.inputMessage.bind("<Return>", self.sendMessage)
 
-        self.createRoomButton = tk.Button(self.topFrame, text="Создать комнату", command=self.createRoom)
+        # Buttons
+        self.createRoomButton = tk.Button(self.topFrame, text="Create Room", command=self.createRoom)
         self.createRoomButton.pack(side=tk.LEFT)
 
-        self.joinRoomButton = tk.Button(self.topFrame, text="Присоединиться", command=self.joinRoom)
+        self.createPrivateRoomButton = tk.Button(self.topFrame, text="Create Private Room", command=self.createPrivateRoom)
+        self.createPrivateRoomButton.pack(side=tk.LEFT)
+
+        self.joinRoomButton = tk.Button(self.topFrame, text="Join Room", command=self.joinRoom)  # Join room button
         self.joinRoomButton.pack(side=tk.LEFT)
 
-        self.userLabel = tk.Label(self.topFrame, text=f"Пользователь: {self.username}")
+        self.userLabel = tk.Label(self.topFrame, text=f"User: {self.username}")
         self.userLabel.pack(side=tk.LEFT, padx=10)
 
-        self.roomLabel = tk.Label(self.topFrame, text="Текущая комната: None")
+        self.roomLabel = tk.Label(self.topFrame, text="Current Room: None")
         self.roomLabel.pack(side=tk.LEFT, padx=10)
 
         self.currentRoom = None
         self.updateRoomList()
     
     def updateRoomList(self):
-        request = {"action": "get_rooms"}
+        request = {"action": "get_rooms", "user": self.username}
         self.socket.send(pickle.dumps(request))
         
         response = pickle.loads(self.socket.recv(1024))
@@ -65,7 +68,7 @@ class ChatClient:
         self.master.after(2000, self.updateRoomList)
     
     def createRoom(self):
-        roomName = simpledialog.askstring("Новая комната", "Введите название комнаты:")
+        roomName = simpledialog.askstring("New Room", "Enter room name:")
         if roomName:
             request = {"action": "create_room", "room": roomName}
             self.socket.send(pickle.dumps(request))
@@ -73,11 +76,24 @@ class ChatClient:
             if response.get("status") == "room_created":
                 self.updateRoomList()
 
+    def createPrivateRoom(self):
+        targetUser = simpledialog.askstring("Private Room", "Enter the username of the person to chat privately with:")
+        if targetUser:
+            request = {"action": "create_private_room", "user": self.username, "target_user": targetUser}
+            self.socket.send(pickle.dumps(request))
+            response = pickle.loads(self.socket.recv(1024))
+            private_room_name = response.get("room_name")
+            if response.get("status") == "private_room_created":
+                self.currentRoom = private_room_name
+                self.roomLabel.config(text=f"Current Room: {self.currentRoom}")
+                self.updateRoomList()
+                self.updateMessages()
+
     def joinRoom(self):
         selectedRoom = self.roomList.get(tk.ACTIVE)
         if selectedRoom:
             self.currentRoom = selectedRoom
-            self.roomLabel.config(text=f"Текущая комната: {self.currentRoom}")
+            self.roomLabel.config(text=f"Current Room: {self.currentRoom}")
             self.messageBox.config(state=tk.NORMAL)
             self.messageBox.delete(1.0, tk.END)
             self.messageBox.config(state=tk.DISABLED)
@@ -85,7 +101,7 @@ class ChatClient:
     
     def updateMessages(self):
         if self.currentRoom:
-            request = {"action": "get_messages", "room": self.currentRoom}
+            request = {"action": "get_messages", "room": self.currentRoom, "user": self.username}
             self.socket.send(pickle.dumps(request))
             response = pickle.loads(self.socket.recv(1024))
             messages = response.get("messages", [])
@@ -107,7 +123,6 @@ class ChatClient:
             if response.get("status") == "message_sent":
                 self.inputMessage.delete(0, tk.END)
                 self.updateMessages()
-
 
 if __name__ == "__main__":
     root = tk.Tk()
